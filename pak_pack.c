@@ -79,6 +79,91 @@ uint32_t countChar(const char *string, uint32_t length, char toCount) {
     return count;
 }
 
+static char _s[12];
+
+static void th_sep(unsigned val) {
+    if (val < 1000) {
+        sprintf(_s + strlen(_s), "%d", val);
+    } else {
+        th_sep(val / 1000);
+        sprintf(_s + strlen(_s), ",%03d", val % 1000);
+    }
+}
+
+const char* thousands_separated(unsigned val) {
+    memset(_s, 0, sizeof(_s));
+    th_sep(val);
+    return _s;
+}
+
+#define SZ_SZ "%11s"
+
+bool pakList(uint8_t* buffer) {
+    MyPakHeader myHeader;
+    if (!pakParseHeader(buffer, &myHeader)) {
+        return false;
+    }
+    PakFile* files = pakGetFiles(buffer);
+    if (files == NULL) {
+        return false;
+    }
+
+    char fileNameBuf[FILENAME_MAX];
+    memset(fileNameBuf, 0, FILENAME_MAX);
+    char pathBuf[PATH_MAX + 2];
+    memset(pathBuf, 0, PATH_MAX);
+
+    char* pakIndexStr = calloc(PAK_BUFFER_BLOCK_SIZE, sizeof(char));
+    if (pakIndexStr == NULL) {
+        free(files);
+        return false;
+    }
+    uint32_t offset = 0;
+    uint32_t length = PAK_BUFFER_BLOCK_SIZE;
+    offset +=
+        sprintf(pakIndexStr + offset, PAK_INDEX_GLOBAL_TAG "\r\nversion=%u\r\n",
+            myHeader.version);
+    offset += sprintf(pakIndexStr + offset,
+        "encoding=%u\r\n\r\n" PAK_INDEX_RES_TAG "\r\n",
+        myHeader.encoding);
+    uint32_t total_octets = 0;
+    for (uint32_t i = 0; i < myHeader.resource_count; i++) {
+        sprintf(fileNameBuf, "%u%s", files[i].id, pakGetFileType(files[i]));
+        printf(" " SZ_SZ "  %s\n", thousands_separated(files[i].size), fileNameBuf);
+        total_octets += files[i].size;
+        if (length - offset < PAK_BUFFER_MIN_FREE_SIZE) {
+            pakIndexStr = realloc(pakIndexStr, length + PAK_BUFFER_BLOCK_SIZE);
+            length += PAK_BUFFER_BLOCK_SIZE;
+        }
+    }
+
+    PakAlias* aliasBuf = NULL;
+    if (myHeader.alias_count > 0) {
+        offset +=
+            sprintf(pakIndexStr + offset, "\r\n" PAK_INDEX_ALIAS_TAG "\r\n");
+        aliasBuf = (PakAlias*)(buffer + myHeader.size +
+            (myHeader.resource_count + 1) * PAK_ENTRY_SIZE);
+    }
+    for (unsigned int i = 0; i < myHeader.alias_count; i++) {
+        offset += sprintf(pakIndexStr + offset, "%u=%u\r\n",
+            aliasBuf->resource_id, aliasBuf->entry_index);
+        sprintf(fileNameBuf, "%u%s", aliasBuf->resource_id, pakGetFileType(files[aliasBuf->entry_index]));
+        printf(" " SZ_SZ "  %s", "", fileNameBuf);
+        sprintf(fileNameBuf, "%u%s", files[aliasBuf->entry_index].id, pakGetFileType(files[aliasBuf->entry_index]));
+        printf(" --> %s\n", fileNameBuf);
+        aliasBuf++;
+        if (length - offset < PAK_BUFFER_MIN_FREE_SIZE) {
+            pakIndexStr = realloc(pakIndexStr, length + PAK_BUFFER_BLOCK_SIZE);
+            length += PAK_BUFFER_BLOCK_SIZE;
+        }
+    }
+    printf("\n");
+    printf(" " SZ_SZ "  Octets total\n", thousands_separated(total_octets));
+
+    free(files);
+    return true;
+}
+
 PakFile pakPack(PakFile pakIndex, char *path) { // TODO
     MyPakHeader myHeader;
     memset(&myHeader, 0, sizeof(myHeader));

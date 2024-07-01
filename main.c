@@ -10,6 +10,8 @@
 
 #define HELP_TEXT                                                              \
     "Pack/Unpack chrome pak file.\n\n"                                         \
+    "%s -l pak_file\n"                                                         \
+    "List contents of pak file\n"                                              \
     "%s -u pak_file destination_path\n"                                        \
     "Unpack chrome pak file at pak_file to destination_path.\n\n"              \
     "%s -p pak_index_file destination_pak_file\n"                              \
@@ -37,7 +39,7 @@ void printHelp() {
     if (ptr != NULL)
         strcpy(selfName, ptr + 1);
 
-    printf(HELP_TEXT, selfName, selfName);
+    printf(HELP_TEXT, selfName, selfName, selfName);
 }
 
 int pakUnpackPath(char *pakFilePath, char *outputPath) {
@@ -56,6 +58,29 @@ int pakUnpackPath(char *pakFilePath, char *outputPath) {
     }
 
     if (!pakUnpack(pakFile.buffer, outputPath)) {
+        freeFile(pakFile);
+        return 4;
+    }
+    freeFile(pakFile);
+    return 0;
+}
+
+int pakListPath(char* pakFilePath) {
+    PakFile pakFile = readFile(pakFilePath);
+    if (pakFile.buffer == NULL) {
+        printf("Error: cannot read pak file %s", pakFilePath);
+        return 1;
+    }
+    MyPakHeader myHeader;
+    if (!pakParseHeader(pakFile.buffer, &myHeader)) {
+        return 2;
+    }
+
+    if (!pakCheckFormat(pakFile.buffer, pakFile.size)) {
+        return 3;
+    }
+
+    if (!pakList(pakFile.buffer)) {
         freeFile(pakFile);
         return 4;
     }
@@ -127,6 +152,7 @@ PAK_PACK_INDEX_END:
 #define PAK_FLAGS_HELP 0
 #define PAK_FLAGS_UNPACK 1
 #define PAK_FLAGS_PACK 2
+#define PAK_FLAGS_LIST 3
 int main(int argc, char *argv[]) {
     uint32_t flags = 0;
     bool process = false;
@@ -155,12 +181,22 @@ int main(int argc, char *argv[]) {
             case 'x':
                 flags = PAK_FLAGS_UNPACK;
                 break;
+            case 'l':
+            case 't':
+                flags = PAK_FLAGS_LIST;
+                break;
             }
         }
         if ((flags == PAK_FLAGS_UNPACK || flags == PAK_FLAGS_PACK) &&
             argc - i > 2) {
             strcpy(path1, argv[i + 1]);
             strcpy(path2, argv[i + 2]);
+            process = true;
+            break;
+        }
+        else if (flags == PAK_FLAGS_LIST &&
+            argc - i > 1) {
+            strcpy(path1, argv[i + 1]);
             process = true;
             break;
         }
@@ -171,6 +207,8 @@ int main(int argc, char *argv[]) {
     }
     if (flags == PAK_FLAGS_UNPACK) {
         return pakUnpackPath(path1, path2);
+    } else if (flags == PAK_FLAGS_LIST) {
+        return pakListPath(path1);
     } else if (flags == PAK_FLAGS_PACK) {
         return pakPackIndexFile(path1, path2);
     }
