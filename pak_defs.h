@@ -6,7 +6,9 @@
 #include <windows.h>
 #define ftello ftell
 #define fseeko fseek
+#ifndef PATH_MAX
 #define PATH_MAX MAX_PATH
+#endif
 #endif
 // linux header
 #ifdef __linux__
@@ -83,7 +85,7 @@ typedef struct MyPakHeader {
 typedef struct PakFile {
     uint16_t id;
     uint32_t size;
-    void *buffer;
+    char *buffer;
 } PakFile;
 
 // file-io

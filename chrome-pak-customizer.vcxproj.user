@@ -1,19 +1,27 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LocalDebuggerCommandArguments>-l "C:\Program Files\BraveSoftware\Brave-Browser\Application\126.1.67.123\brave_100_percent.pak" d:\temp</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--extract brave_resources.pak d:\temp\brave_resources.pak</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerWorkingDirectory>C:\Program Files\BraveSoftware\Brave-Browser\Application\126.1.67.123</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommand>$(OutDir)pak-tool</LocalDebuggerCommand>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LocalDebuggerCommandArguments>-l "C:\Program Files\BraveSoftware\Brave-Browser\Application\126.1.67.123\brave_100_percent.pak" d:\temp</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--extract brave_resources.pak d:\temp\brave_resources.pak</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerWorkingDirectory>C:\Program Files\BraveSoftware\Brave-Browser\Application\126.1.67.123</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommand>$(OutDir)pak-tool</LocalDebuggerCommand>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>-l "C:\Program Files\BraveSoftware\Brave-Browser\Application\126.1.67.123\brave_100_percent.pak" d:\temp</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--extract brave_resources.pak d:\temp\brave_resources.pak</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerWorkingDirectory>C:\Program Files\BraveSoftware\Brave-Browser\Application\126.1.67.123</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommand>$(OutDir)pak-tool</LocalDebuggerCommand>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommandArguments>-l "C:\Program Files\BraveSoftware\Brave-Browser\Application\126.1.67.123\brave_100_percent.pak" d:\temp</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--extract brave_resources.pak d:\temp\brave_resources.pak</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerWorkingDirectory>C:\Program Files\BraveSoftware\Brave-Browser\Application\126.1.67.123</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommand>$(OutDir)pak-tool</LocalDebuggerCommand>
   </PropertyGroup>
 </Project>

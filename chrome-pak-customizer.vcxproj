@@ -48,5 +48,13 @@
     <ClInclude Include="pak_header.h" />
     <ClInclude Include="pak_pack.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="chrome-pak-customizer.akibld.bat" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\svn\akisystems\akilib\akilib.vcxproj">
+      <Project>{0a19bc1f-d9ea-4438-ba0d-2e42c97fc45d}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

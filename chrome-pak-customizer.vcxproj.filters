@@ -60,4 +60,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="chrome-pak-customizer.akibld.bat">
+      <Filter>Other Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>

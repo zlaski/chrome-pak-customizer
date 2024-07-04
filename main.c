@@ -8,16 +8,15 @@
 #include "pak_header.h"
 #include "pak_pack.h"
 
-#define HELP_TEXT                                                              \
-    "Pack/Unpack chrome pak file.\n\n"                                         \
-    "%s -l pak_file\n"                                                         \
-    "List contents of pak file\n"                                              \
-    "%s -u pak_file destination_path\n"                                        \
-    "Unpack chrome pak file at pak_file to destination_path.\n\n"              \
-    "%s -p pak_index_file destination_pak_file\n"                              \
-    "Pack chrome pak file using pak_index_file to destination_pak_file.\n"     \
-    "pak_index_file would be found in unpacked path.\n"                        \
-    "\nNote: existing destination files would be overwritten\n"
+#define HELP_TEXT                                                   \
+    "Pack/Unpack Chrome/Brave PAK files.\n\n"                       \
+    "%s --list <pak_file>\n"                                        \
+    "    List contents of PAK file\n"                               \
+    "%s --unpack <pak_file> <destination_path>\n"                   \
+    "    Unpack contents of PAK file into destination folder\n"     \
+    "%s --pack <pak_index_file> <destination_pak_file>\n"           \
+    "    Build a PAK file using the index provided\n\n"             \
+    "Note: existing destination files would be overwritten\n"
 
 void printHelp() {
     // get self path
@@ -80,6 +79,7 @@ int pakListPath(char* pakFilePath) {
         return 3;
     }
 
+    printf("Contents of %s\n\n", pakFilePath);
     if (!pakList(pakFile.buffer)) {
         freeFile(pakFile);
         return 4;
@@ -185,6 +185,19 @@ int main(int argc, char *argv[]) {
             case 't':
                 flags = PAK_FLAGS_LIST;
                 break;
+            default:
+                if (!strcmp(arg, "-help")) {
+                    flags = PAK_FLAGS_HELP;
+                }
+                else if (!strcmp(arg, "-pack")) {
+                    flags = PAK_FLAGS_PACK;
+                }
+                else if (!strcmp(arg, "-unpack") || !strcmp(arg, "-extract")) {
+                    flags = PAK_FLAGS_UNPACK;
+                }
+                else if (!strcmp(arg, "-list")) {
+                    flags = PAK_FLAGS_LIST;
+                }
             }
         }
         if ((flags == PAK_FLAGS_UNPACK || flags == PAK_FLAGS_PACK) &&
