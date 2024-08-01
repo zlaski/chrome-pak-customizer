@@ -23,4 +23,6 @@ PakFile readFile(const char *fileName);
  */
 bool writeFile(const char *fileName, const PakFile file);
 
+char* winified(const char* path);
+
 #endif // __PAK_FILE_IO_H__

@@ -64,5 +64,11 @@
     <None Include="chrome-pak-customizer.akibld.bat">
       <Filter>Other Files</Filter>
     </None>
+    <None Include="zlib.d.ts">
+      <Filter>Other Files</Filter>
+    </None>
+    <None Include="zlib.js">
+      <Filter>Other Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

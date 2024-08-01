@@ -18,6 +18,8 @@
     "    Build a PAK file using the index provided\n\n"             \
     "Note: existing destination files would be overwritten\n"
 
+bool forceOverwrite = false;
+
 void printHelp() {
     // get self path
     char selfName[PATH_MAX];
@@ -43,7 +45,7 @@ void printHelp() {
 
 int pakUnpackPath(char *pakFilePath, char *outputPath) {
     PakFile pakFile = readFile(pakFilePath);
-    if (pakFile.buffer == NULL) {
+    if (pakFile.size == 0 || pakFile.buffer == NULL) {
         printf("Error: cannot read pak file %s", pakFilePath);
         return 1;
     }
@@ -64,9 +66,9 @@ int pakUnpackPath(char *pakFilePath, char *outputPath) {
     return 0;
 }
 
-int pakListPath(char* pakFilePath) {
+int pakListPath(char* pakFilePath, char *destDirectory) {
     PakFile pakFile = readFile(pakFilePath);
-    if (pakFile.buffer == NULL) {
+    if (pakFile.size == 0 || pakFile.buffer == NULL) {
         printf("Error: cannot read pak file %s", pakFilePath);
         return 1;
     }
@@ -80,7 +82,7 @@ int pakListPath(char* pakFilePath) {
     }
 
     printf("Contents of %s\n\n", pakFilePath);
-    if (!pakList(pakFile.buffer)) {
+    if (!pakList(pakFile.buffer, destDirectory)) {
         freeFile(pakFile);
         return 4;
     }
@@ -112,7 +114,7 @@ int pakPackIndexFile(char *indexPath, char *outputFilePath) {
     }
 
     pakIndexFile = readFile(indexPath);
-    if (pakIndexFile.buffer == NULL) {
+    if (pakIndexFile.size == 0 || pakIndexFile.buffer == NULL) {
         printf("Error: cannot read file %s", indexPath);
         returnCode = 6;
         goto PAK_PACK_INDEX_END;
@@ -149,21 +151,53 @@ PAK_PACK_INDEX_END:
     return returnCode;
 }
 
+char tempDir[PATH_MAX + 1];
+char tmpFileName[PATH_MAX + 16];
+
+static void setUpTempPath(void) {
+    char* t = getenv("TMPDIR");
+    if (!t) {
+        t = getenv("TMP");
+    }
+    if (!t) {
+        t = getenv("TEMP");
+    }
+    if (t) {
+        strncpy(tempDir, t, PATH_MAX);
+    }
+    else {
+#ifdef _WIN32
+        GetTempPath(PATH_MAX, tempDir);
+#else
+        strcpy(tempDir, "/tmp");
+#endif
+    }
+    strcat(tempDir, (tempDir[1] == ':' ? "\\" : "/"));
+    strcpy(tmpFileName, tempDir);
+    strcat(tmpFileName, "payload.tmp");
+
+}
+
 #define PAK_FLAGS_HELP 0
 #define PAK_FLAGS_UNPACK 1
 #define PAK_FLAGS_PACK 2
 #define PAK_FLAGS_LIST 3
+
 int main(int argc, char *argv[]) {
     uint32_t flags = 0;
     bool process = false;
-    char path1[PATH_MAX];
-    memset(path1, 0, PATH_MAX);
-    char path2[PATH_MAX];
-    memset(path2, 0, PATH_MAX);
-    for (int i = 1; i < argc; i++) {
+    char path1[PATH_MAX + 1] = { 0 };
+    char path2[PATH_MAX + 1] = { 0 };
+
+    int i = 1;
+    if (!strcmp(argv[i], "-f") || !strcmp(argv[i], "--force")) {
+        forceOverwrite = TRUE;
+        i = 2;
+    }
+    for (; i < argc; i++) {
         char *arg = argv[i];
         bool isConfig = false;
-        if (*arg != '\0' && (*arg == '/' || *arg == '-')) {
+        if (*arg == '-') {
             arg++;
             isConfig = true;
         }
@@ -210,6 +244,7 @@ int main(int argc, char *argv[]) {
         else if (flags == PAK_FLAGS_LIST &&
             argc - i > 1) {
             strcpy(path1, argv[i + 1]);
+            strcpy(path2, argv[i + 2]);   // may be NULL
             process = true;
             break;
         }
@@ -218,10 +253,27 @@ int main(int argc, char *argv[]) {
         printHelp();
         return 0;
     }
+    setUpTempPath();
+
+    char *w;
+
+    if (*path1) {
+        w = winified(path1);
+        // printf("winified: \"%s\" --> \"%s\"\n", path1, w);
+        strncpy(path1, w, MAX_PATH);
+        free(w);
+    }
+    if (*path2) {
+        w = winified(path2);
+        // printf("winified: \"%s\" --> \"%s\"\n", path2, w);
+        strncpy(path2, w, MAX_PATH);
+        free(w);
+    }
+
     if (flags == PAK_FLAGS_UNPACK) {
-        return pakUnpackPath(path1, path2);
+        return pakListPath(path1, path2);
     } else if (flags == PAK_FLAGS_LIST) {
-        return pakListPath(path1);
+        return pakListPath(path1, path2);
     } else if (flags == PAK_FLAGS_PACK) {
         return pakPackIndexFile(path1, path2);
     }

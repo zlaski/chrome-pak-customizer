@@ -1,4 +1,70 @@
 #include "pak_pack.h"
+
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+
+#define BUF_COUNT 4
+
+static char _strA[BUF_COUNT][PATH_MAX + 1];
+static int _strAidx = 0;
+
+static_assert(sizeof(_strA[0]) == PATH_MAX + 1, "wrong idx ordering");
+
+static const char *str(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    char* strAdata = _strA[_strAidx];
+    vsnprintf(strAdata, PATH_MAX, fmt, args);
+    _strAidx = (++_strAidx % BUF_COUNT);
+    return strAdata;
+}
+
+static char *f_rd(const char* name, int *len) {
+    FILE* t = fopen(name, "rb");
+    if (!t) {
+        return NULL;
+    }
+    struct stat s = { 0 };
+    if (stat(name, &s)) {
+        return NULL;
+    }
+    int trim = *len;
+    *len = s.st_size;
+    char *buf = (char *)calloc(1, *len + 1);
+    int e = fread(buf, 1, *len, t);
+    fclose(t);
+    while (trim && *len && (buf[*len - 1] == '\r' || buf[*len - 1] == '\n')) {
+        buf[--*len] = 0;
+    }
+    return buf;
+}
+
+static int f_wr(const char* name, const char* buf, int len) {
+    FILE* t = fopen(name, "wb");
+    int e = fwrite(buf, 1, len, t);
+    fclose(t);
+
+    return (e == len ? 1 : 0);
+}
+
+static int run(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+
+    char cmdBuf[PATH_MAX * 2 + 1];
+    vsnprintf(cmdBuf, PATH_MAX * 2, fmt, args);
+    //printf("run: %s\n", cmdBuf);
+    return system(cmdBuf);
+}
+
+char* winified(const char* path) {
+    int rc = run("cygpath -w \"%s\" >\"%s\"", path, tmpFileName);
+    rc = 1; // activate trim inside f_rd
+    char *res =f_rd(tmpFileName, &rc);
+    return res;
+}
+
 bool pakUnpack(uint8_t *buffer, char *outputPath) {
     MyPakHeader myHeader;
     if (!pakParseHeader(buffer, &myHeader)) {
@@ -9,10 +75,8 @@ bool pakUnpack(uint8_t *buffer, char *outputPath) {
         return false;
     }
 
-    char fileNameBuf[FILENAME_MAX];
-    memset(fileNameBuf, 0, FILENAME_MAX);
-    char pathBuf[PATH_MAX + 2];
-    memset(pathBuf, 0, PATH_MAX);
+    char fileNameBuf[FILENAME_MAX] = { 0 };
+    char pathBuf[PATH_MAX + 2] = { 0 };
 
 #ifdef _WIN32
     if (!CreateDirectoryA(outputPath, NULL)) {
@@ -101,8 +165,10 @@ const char* thousands_separated(unsigned val) {
 
 #define SZ_SZ "%11s"
 
-bool pakList(uint8_t* buffer) {
+bool pakList(uint8_t* buffer, const char *destDirectory) {
     MyPakHeader myHeader;
+    int rc;
+
     if (!pakParseHeader(buffer, &myHeader)) {
         return false;
     }
@@ -111,15 +177,67 @@ bool pakList(uint8_t* buffer) {
         return false;
     }
 
-    char fileNameBuf[FILENAME_MAX];
-    memset(fileNameBuf, 0, FILENAME_MAX);
-    char pathBuf[PATH_MAX + 2];
-    memset(pathBuf, 0, PATH_MAX);
+    struct stat dirStat = { 0 };
+    if (!stat(destDirectory, &dirStat)) {
+        if (!forceOverwrite) {
+            printf("Error: \'%s\' already exists\n", destDirectory);
+            return false;
+        }
+        rc = run("rmdir /s /q \"%s\"", destDirectory);
+        if (rc) {
+            printf("Error: unable to remove \'%s\'\n", destDirectory);
+            return FALSE;
+        }
+    }
+
+    if (destDirectory) {
+        rc = run("mkdir \"%s\"", destDirectory);
+        if (rc) {
+            printf("Error: cannot create \'%s\' directory\n", destDirectory);
+            return false;
+        }
+    } else {
+        destDirectory = ".";
+    }
+
+    char fileNameBuf[FILENAME_MAX + 1], buf2[FILENAME_MAX + 1];
+    char pathBuf[PATH_MAX + 2] = { 0 };
+
+    const char *outerExt;
 
     uint32_t total_octets = 0;
     for (uint32_t i = 0; i < myHeader.resource_count; i++) {
-        sprintf(fileNameBuf, "%u%s", files[i].id, pakGetFileType(files[i]));
-        printf(" " SZ_SZ "  %s\n", thousands_separated(files[i].size), fileNameBuf);
+        f_wr(tmpFileName, files[i].buffer, files[i].size);
+        outerExt = pakGetFileType(files[i]);
+        snprintf(fileNameBuf, FILENAME_MAX, "%s\\%05u%s", destDirectory, files[i].id, outerExt);
+
+        if (!strcmp(outerExt, ".gz") || !strcmp(outerExt, ".br")) {
+            rc = run("mkdir \"%s\"", fileNameBuf);
+            if (!strcmp(outerExt, ".gz")) {
+                rc = run("move /y \"%s\" \"%s.gz\" >nul", tmpFileName, tmpFileName);
+                rc = run("gzip -d \"%s.gz\"", tmpFileName);
+            } else {
+                rc = run("move /y \"%s\" \"%s.br\" >nul", tmpFileName, tmpFileName);
+                rc = run("brotli --decompress --in=\"%s.br\" --out=\"%s\"", tmpFileName, tmpFileName);
+            }
+
+            if (rc) {
+                printf("Error: cannot decompress \'%s\'\n", fileNameBuf);
+                return false;
+            }
+
+            PakFile extrFile = { 0 };
+            extrFile.buffer = f_rd(tmpFileName, &extrFile.size);
+            const char* innerExt = pakGetFileType(extrFile);
+            rc = run("move /y \"%s\" \"%s\\%05u%s\" >nul", tmpFileName, fileNameBuf, files[i].id, innerExt);
+            printf("%12s  %05u%s\\%05u%s\n", thousands_separated(extrFile.size), files[i].id, outerExt, files[i].id, innerExt);
+            free(extrFile.buffer);
+        }
+        else {
+            rc = run("move /y \"%s\" \"%s\" >nul", tmpFileName, fileNameBuf);
+            printf("%12s  %05u%s\n", thousands_separated(files[i].size), files[i].id, outerExt);
+        }
+
         total_octets += files[i].size;
     }
 
@@ -130,22 +248,26 @@ bool pakList(uint8_t* buffer) {
             (myHeader.resource_count + 1) * PAK_ENTRY_SIZE);
     }
     for (unsigned int i = 0; i < myHeader.alias_count; i++) {
-        sprintf(fileNameBuf, "%u%s", aliasBuf->resource_id, pakGetFileType(files[aliasBuf->entry_index]));
-        printf(" " SZ_SZ "  %s", "", fileNameBuf);
-        sprintf(fileNameBuf, "%u%s", files[aliasBuf->entry_index].id, pakGetFileType(files[aliasBuf->entry_index]));
-        printf(" --> %s\n", fileNameBuf);
+        const char* aliasExt = pakGetFileType(files[aliasBuf->entry_index]);
+        unsigned short targResourceId = files[aliasBuf->entry_index].id;
+
+        if (!strcmp(aliasExt, ".gz") || !strcmp(aliasExt, ".br")) {
+            run("mklink /d \"%s\\%05u%s\" \"%05u%s\" >nul", destDirectory, aliasBuf->resource_id, aliasExt, targResourceId, aliasExt);
+        } else {
+            run("mklink \"%s\\%05u%s\" \"%05u%s\" >nul", destDirectory, aliasBuf->resource_id, aliasExt, targResourceId, aliasExt);
+        }
+        printf("%12s  %05u%s --> %05u%s\n", " ", aliasBuf->resource_id, aliasExt, targResourceId, aliasExt);
         aliasBuf++;
     }
     printf("\n");
-    printf(" " SZ_SZ "  Octets total\n\n", thousands_separated(total_octets));
+    printf("%12s  Octets total\n\n", thousands_separated(total_octets));
 
     free(files);
     return true;
 }
 
 PakFile pakPack(PakFile pakIndex, char *path) { // TODO
-    MyPakHeader myHeader;
-    memset(&myHeader, 0, sizeof(myHeader));
+    MyPakHeader myHeader = { 0 };
     char *pakIndexBuf = pakIndex.buffer;
 
     PakFile pakFile = NULL_File;
@@ -193,10 +315,8 @@ PakFile pakPack(PakFile pakIndex, char *path) { // TODO
     // printf("resource_count=%u\nalias_count=%u\n", myHeader.resource_count,
     // myHeader.alias_count);
 
-    char fileNameBuf[FILENAME_MAX];
-    memset(fileNameBuf, 0, FILENAME_MAX);
-    char pathBuf[PATH_MAX];
-    memset(pathBuf, 0, PATH_MAX);
+    char fileNameBuf[FILENAME_MAX] = { 0 };
+    char pathBuf[PATH_MAX] = { 0 };
     resFiles = calloc(myHeader.resource_count, sizeof(PakFile));
     if (resFiles == NULL) {
         goto PAK_PACK_END;
@@ -213,7 +333,7 @@ PakFile pakPack(PakFile pakIndex, char *path) { // TODO
         }
         offset += count;
         resFiles[i] = readFile(pathBuf);
-        if (resFiles[i].buffer == NULL) {
+        if (resFiles[i].size == 0 || resFiles[i].buffer == NULL) {
             puts(PAK_ERROR_BROKEN_INDEX);
             myHeader.resource_count = i;
             goto PAK_PACK_END;

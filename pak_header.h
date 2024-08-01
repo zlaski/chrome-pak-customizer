@@ -11,7 +11,7 @@
  * @param _out_ MyPakHeader myHeader - target file content.
  * @return bool - succeed or not.
  */
-bool pakParseHeader(void *buffer, MyPakHeader *myHeader);
+bool pakParseHeader(const void *buffer, MyPakHeader *myHeader);
 
 /**
  * Write pak header from MyPakHeader struct to buffer.
@@ -27,6 +27,6 @@ unsigned int pakWriteHeader(MyPakHeader *myHeader, void *buffer);
  * @param unsigned int size - pak buffer size in bytes.
  * @return bool - succeed or not.
  */
-bool pakCheckFormat(uint8_t *buffer, unsigned int size);
+bool pakCheckFormat(const uint8_t *buffer, unsigned int size);
 
 #endif // __PAK_HEADERS_H__

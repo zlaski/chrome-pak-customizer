@@ -1,6 +1,6 @@
 #include "pak_header.h"
 
-bool pakParseHeader(void *buffer, MyPakHeader *myHeader) {
+bool pakParseHeader(const void *buffer, MyPakHeader *myHeader) {
     memset(myHeader, 0, sizeof(MyPakHeader));
     myHeader->version = pakGetVerison(buffer);
     if (myHeader->version == 5) {
@@ -43,7 +43,7 @@ unsigned int pakWriteHeader(MyPakHeader *myHeader, void *buffer) {
     return myHeader->size;
 }
 
-bool pakCheckFormat(uint8_t *buffer, unsigned int size) {
+bool pakCheckFormat(const uint8_t *buffer, unsigned int size) {
     MyPakHeader myHeader;
     if (!pakParseHeader(buffer, &myHeader)) {
         return false;

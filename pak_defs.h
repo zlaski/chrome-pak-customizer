@@ -88,6 +88,9 @@ typedef struct PakFile {
     char *buffer;
 } PakFile;
 
+char tempDir[];
+char tmpFileName[];
+
 // file-io
 #define NULL_File ((PakFile){0, 0, NULL})
 #define freeFile(file) (free((file).buffer))

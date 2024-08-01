@@ -4,10 +4,11 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#else
+#endif
+
 #include <sys/stat.h>
 #include <sys/types.h>
-#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -49,6 +50,8 @@ uint32_t countChar(const char *string, uint32_t length, char toCount);
 /* Produces a nice, comma-separated number */
 const char* thousands_separated(unsigned val);
 /* Produce a directory listing, no unpacking */
-bool pakList(uint8_t* buffer);
+bool pakList(uint8_t* buffer, const char *destDirectory);
+
+extern bool forceOverwrite;
 
 #endif // __PAK_PACKER_UNPACKER_H__

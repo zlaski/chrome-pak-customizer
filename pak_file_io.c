@@ -1,7 +1,13 @@
 #include "pak_file_io.h"
 
 PakFile readFile(const char *fileName) {
-    PakFile file;
+    struct stat fileStat = { 0 };
+    if (stat(fileName, &fileStat) || fileStat.st_size < 0x10) {
+        printf("Error: \'%s\' is invalid or does not exist\n", fileName);
+        return NULL_File;
+    }
+
+    PakFile file = { 0 };
     /* declare a file pointer */
     FILE *filePtr = fopen(fileName, "rb");
     /* quit if the file does not exist */
