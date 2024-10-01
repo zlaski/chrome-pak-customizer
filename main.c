@@ -82,7 +82,7 @@ int pakListPath(char* pakFilePath, char *destDirectory) {
     }
 
     printf("Contents of %s\n\n", pakFilePath);
-    if (!pakList(pakFile.buffer, destDirectory)) {
+    if (!pakList(pakFile, destDirectory)) {
         freeFile(pakFile);
         return 4;
     }
@@ -271,11 +271,11 @@ int main(int argc, char *argv[]) {
     }
 
     if (flags == PAK_FLAGS_UNPACK) {
-        return pakListPath(path1, path2);
+        return pakListPath(path2, path1);
     } else if (flags == PAK_FLAGS_LIST) {
-        return pakListPath(path1, path2);
+        return pakListPath(path2, path1);
     } else if (flags == PAK_FLAGS_PACK) {
-        return pakPackIndexFile(path1, path2);
+        return pakPackIndexFile(path2, path1);
     }
     return 32;
 }

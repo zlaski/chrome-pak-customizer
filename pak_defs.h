@@ -46,10 +46,10 @@ typedef struct PakHeaderV4 {
 } PakHeaderV4;
 
 // Entry: uint16_t resourceId; uint32_t offset;
-typedef struct PakEntry {
+typedef struct PakResource {
     uint16_t resource_id;
     uint32_t offset;
-} PakEntry;
+} PakResource;
 
 // Alias: uint16_t resourceId; uint16_t entry_index;
 typedef struct PakAlias {
@@ -64,10 +64,10 @@ typedef struct PakAlias {
  * @param void *buffer - pointer to pak.
  * @return uint32_t - pak version.
  */
-#define pakGetVerison(buffer) (*(uint32_t *)(buffer))
+#define pakGetVersion(buffer) (*(uint32_t *)(buffer))
 #define PAK_HEADER_SIZE_V4 sizeof(PakHeaderV4)
 #define PAK_HEADER_SIZE_V5 sizeof(PakHeaderV5)
-#define PAK_ENTRY_SIZE sizeof(PakEntry)
+#define PAK_RESOURCE_SIZE sizeof(PakResource)
 #define PAK_ALIAS_SIZE sizeof(PakAlias)
 
 #define PAK_ERROR_UNKNOWN_VER "Error: Unknown pak version."

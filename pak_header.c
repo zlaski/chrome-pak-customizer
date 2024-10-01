@@ -2,7 +2,7 @@
 
 bool pakParseHeader(const void *buffer, MyPakHeader *myHeader) {
     memset(myHeader, 0, sizeof(MyPakHeader));
-    myHeader->version = pakGetVerison(buffer);
+    myHeader->version = pakGetVersion(buffer);
     if (myHeader->version == 5) {
         PakHeaderV5 *header = (PakHeaderV5 *)buffer;
         myHeader->resource_count = header->resource_count;
@@ -48,19 +48,29 @@ bool pakCheckFormat(const uint8_t *buffer, unsigned int size) {
     if (!pakParseHeader(buffer, &myHeader)) {
         return false;
     }
-    if (size < myHeader.size + (myHeader.resource_count + 1) * PAK_ENTRY_SIZE +
+    if (size <= myHeader.size + (myHeader.resource_count + 1) * PAK_RESOURCE_SIZE +
                    myHeader.alias_count * PAK_ALIAS_SIZE) {
         puts(PAK_ERROR_TRUNCATED);
         return false;
     }
-    PakEntry *entryPtr = (PakEntry *)(buffer + myHeader.size);
+    PakResource *entryPtr = (PakResource *)(buffer + myHeader.size);
+    uint32_t watermark = 0;
     for (unsigned int i = 0; i <= myHeader.resource_count; i++) {
         uint32_t offset = entryPtr->offset;
+        if (offset <= watermark) {
+            puts(PAK_ERROR_TRUNCATED);
+            return false;
+        }
+        watermark = offset;
         if (size < offset) {
             puts(PAK_ERROR_TRUNCATED);
             return false;
         }
         entryPtr++;
+    }
+    if (size != watermark) {
+        puts(PAK_ERROR_TRUNCATED);
+        return false;
     }
     return true;
 }

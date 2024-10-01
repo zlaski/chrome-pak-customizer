@@ -3,7 +3,7 @@ PakFile pakPackFiles(MyPakHeader *myHeader, PakFile *pakResFile,
                      PakAlias *pakAlias) {
     uint8_t *buffer = NULL;
     uint32_t size = myHeader->size;
-    uint32_t entrySize = (myHeader->resource_count + 1) * PAK_ENTRY_SIZE;
+    uint32_t entrySize = (myHeader->resource_count + 1) * PAK_RESOURCE_SIZE;
     uint32_t aliasSize = myHeader->alias_count * PAK_ALIAS_SIZE;
     size += entrySize + aliasSize;
     for (uint32_t i = 0; i < myHeader->resource_count; i++) {
@@ -18,7 +18,7 @@ PakFile pakPackFiles(MyPakHeader *myHeader, PakFile *pakResFile,
         return NULL_File;
     }
 
-    PakEntry *enrtyPtr = (PakEntry *)(buffer + offset);
+    PakResource *enrtyPtr = (PakResource *)(buffer + offset);
     uint8_t *filePtr = buffer + offset + entrySize + aliasSize;
     for (uint32_t i = 0; i < myHeader->resource_count; i++) {
         memcpy(filePtr, pakResFile->buffer, pakResFile->size);
@@ -45,11 +45,11 @@ PakFile pakGetFile(uint8_t *pakBuffer, uint16_t id) {
     if (!pakParseHeader(pakBuffer, &myHeader)) {
         return NULL_File;
     }
-    PakEntry *entryPtr = (PakEntry *)(pakBuffer + myHeader.size);
+    PakResource *entryPtr = (PakResource *)(pakBuffer + myHeader.size);
     if (myHeader.version == 5) {
         PakAlias *aliasPtr =
             (PakAlias *)(pakBuffer + myHeader.size +
-                         (myHeader.resource_count + 1) * PAK_ENTRY_SIZE);
+                         (myHeader.resource_count + 1) * PAK_RESOURCE_SIZE);
         for (uint16_t i = 0; i < myHeader.alias_count; i++) {
             if (aliasPtr->resource_id == id) {
                 entryPtr += aliasPtr->entry_index;
@@ -81,7 +81,7 @@ PakFile *pakGetFiles(uint8_t *buffer) {
     if (pakResFile == NULL) {
         return NULL;
     }
-    PakEntry *pakEntryPtr = (PakEntry *)(buffer + myHeader.size);
+    PakResource *pakEntryPtr = (PakResource *)(buffer + myHeader.size);
     for (uint32_t i = 0; i < myHeader.resource_count; i++) {
         uint32_t offset = pakEntryPtr->offset;
         pakResFile->id = pakEntryPtr->resource_id;

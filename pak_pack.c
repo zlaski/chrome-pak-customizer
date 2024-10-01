@@ -115,7 +115,7 @@ bool pakUnpack(uint8_t *buffer, char *outputPath) {
         offset +=
             sprintf(pakIndexStr + offset, "\r\n" PAK_INDEX_ALIAS_TAG "\r\n");
         aliasBuf = (PakAlias *)(buffer + myHeader.size +
-                                (myHeader.resource_count + 1) * PAK_ENTRY_SIZE);
+                                (myHeader.resource_count + 1) * PAK_RESOURCE_SIZE);
     }
     for (unsigned int i = 0; i < myHeader.alias_count; i++) {
         offset += sprintf(pakIndexStr + offset, "%u=%u\r\n",
@@ -165,10 +165,10 @@ const char* thousands_separated(unsigned val) {
 
 #define SZ_SZ "%11s"
 
-bool pakList(uint8_t* buffer, const char *destDirectory) {
+bool pakList(PakFile file, const char *destDirectory) {
     MyPakHeader myHeader;
     int rc;
-
+    uint8_t* buffer = file.buffer;
     if (!pakParseHeader(buffer, &myHeader)) {
         return false;
     }
@@ -207,8 +207,12 @@ bool pakList(uint8_t* buffer, const char *destDirectory) {
 
     uint32_t total_octets = 0;
     for (uint32_t i = 0; i < myHeader.resource_count; i++) {
-        f_wr(tmpFileName, files[i].buffer, files[i].size);
         outerExt = pakGetFileType(files[i]);
+        if (!strcmp(outerExt, ".br")) {
+            f_wr(tmpFileName, files[i].buffer + 8, files[i].size - 8);
+        } else {
+            f_wr(tmpFileName, files[i].buffer, files[i].size);
+        }
         snprintf(fileNameBuf, FILENAME_MAX, "%s\\%05u%s", destDirectory, files[i].id, outerExt);
 
         if (!strcmp(outerExt, ".gz") || !strcmp(outerExt, ".br")) {
@@ -218,7 +222,7 @@ bool pakList(uint8_t* buffer, const char *destDirectory) {
                 rc = run("gzip -d \"%s.gz\"", tmpFileName);
             } else {
                 rc = run("move /y \"%s\" \"%s.br\" >nul", tmpFileName, tmpFileName);
-                rc = run("brotli --decompress --in=\"%s.br\" --out=\"%s\"", tmpFileName, tmpFileName);
+                rc = run("brotli -d -f -o \"%s\" \"%s.br\"", tmpFileName, tmpFileName);
             }
 
             if (rc) {
@@ -230,22 +234,23 @@ bool pakList(uint8_t* buffer, const char *destDirectory) {
             extrFile.buffer = f_rd(tmpFileName, &extrFile.size);
             const char* innerExt = pakGetFileType(extrFile);
             rc = run("move /y \"%s\" \"%s\\%05u%s\" >nul", tmpFileName, fileNameBuf, files[i].id, innerExt);
-            printf("%12s  %05u%s\\%05u%s\n", thousands_separated(extrFile.size), files[i].id, outerExt, files[i].id, innerExt);
+            printf("%12s  %05u%s/%05u%s\n", thousands_separated(extrFile.size), files[i].id, outerExt, files[i].id, innerExt);
+            total_octets += extrFile.size;
             free(extrFile.buffer);
         }
         else {
             rc = run("move /y \"%s\" \"%s\" >nul", tmpFileName, fileNameBuf);
             printf("%12s  %05u%s\n", thousands_separated(files[i].size), files[i].id, outerExt);
+            total_octets += files[i].size;
         }
 
-        total_octets += files[i].size;
     }
 
     PakAlias* aliasBuf = NULL;
     if (myHeader.alias_count > 0) {
         printf("\n");
         aliasBuf = (PakAlias*)(buffer + myHeader.size +
-            (myHeader.resource_count + 1) * PAK_ENTRY_SIZE);
+            (myHeader.resource_count + 1) * PAK_RESOURCE_SIZE);
     }
     for (unsigned int i = 0; i < myHeader.alias_count; i++) {
         const char* aliasExt = pakGetFileType(files[aliasBuf->entry_index]);
@@ -260,7 +265,8 @@ bool pakList(uint8_t* buffer, const char *destDirectory) {
         aliasBuf++;
     }
     printf("\n");
-    printf("%12s  Octets total\n\n", thousands_separated(total_octets));
+    printf("%12s  Input PAK file size\n", thousands_separated(file.size));
+    printf("%12s  Unpacked octets total\n\n", thousands_separated(total_octets));
 
     free(files);
     return true;

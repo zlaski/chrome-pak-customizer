@@ -50,7 +50,7 @@ uint32_t countChar(const char *string, uint32_t length, char toCount);
 /* Produces a nice, comma-separated number */
 const char* thousands_separated(unsigned val);
 /* Produce a directory listing, no unpacking */
-bool pakList(uint8_t* buffer, const char *destDirectory);
+bool pakList(PakFile file, const char *destDirectory);
 
 extern bool forceOverwrite;
 
